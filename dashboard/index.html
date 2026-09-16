@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fantasy Manager</title>
+<style>
+:root {
+  --bg: #f6f5f1; --panel: #ffffff; --ink: #1c1d1f; --muted: #6b6e74; --line: #e3e1da;
+  --accent: #2a5bd7; --ok: #1f8a4c; --warn: #b7791f; --bad: #c0392b; --chip: #efede6;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #131416; --panel: #1c1d20; --ink: #e8e6e1; --muted: #9a9ca2; --line: #2c2d31;
+    --accent: #7aa2ff; --ok: #4cc47f; --warn: #e0a64a; --bad: #ef6b5b; --chip: #26272b; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; }
+header { padding: 18px 16px 8px; max-width: 1280px; margin: 0 auto; display: flex; flex-wrap: wrap;
+  gap: 8px 24px; align-items: baseline; }
+header h1 { font-size: 20px; margin: 0; letter-spacing: -0.01em; }
+header .meta { color: var(--muted); }
+main { max-width: 1280px; margin: 0 auto; padding: 8px 16px 40px; display: grid; gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 900px) { main { grid-template-columns: minmax(0, 1fr); } }
+.full { grid-column: 1 / -1; }
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px;
+  min-width: 0; }
+section > h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
+  margin: 0 0 10px; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.muted { color: var(--muted); }
+.mono { font-family: var(--mono); font-size: 12px; }
+.chip { display: inline-block; padding: 1px 7px; border-radius: 999px; background: var(--chip);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.02em; white-space: nowrap; }
+.chip.ok { color: var(--ok); } .chip.warn { color: var(--warn); } .chip.bad { color: var(--bad); }
+.chip.accent { color: var(--accent); }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: var(--muted); }
+.dot.ok { background: var(--ok); } .dot.bad { background: var(--bad); } .dot.warn { background: var(--warn); }
+
+/* health */
+.health { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px 20px; }
+.kv .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.kv .v { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.kv .s { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.strip { display: flex; gap: 4px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+.strip .dot { width: 12px; height: 12px; border-radius: 3px; cursor: default; }
+.alert { margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: var(--chip); color: var(--bad);
+  font-size: 13px; overflow-wrap: anywhere; }
+
+/* tables */
+.scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.04em; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+td { padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tr.bench td { color: var(--muted); }
+tr.divider td { border-bottom: 2px solid var(--line); }
+
+/* timeline */
+.filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.filters button { font: inherit; font-size: 12px; border: 1px solid var(--line); background: transparent;
+  color: var(--muted); border-radius: 999px; padding: 2px 10px; cursor: pointer; }
+.filters button.on { color: var(--ink); background: var(--chip); }
+.tl { list-style: none; margin: 0; padding: 0; max-height: 720px; overflow-y: auto; }
+.tl li { padding: 9px 0 9px 14px; border-left: 2px solid var(--line); margin-left: 4px; position: relative; }
+.tl li::before { content: ""; position: absolute; left: -6px; top: 14px; width: 10px; height: 10px;
+  border-radius: 50%; background: var(--panel); border: 2px solid var(--muted); }
+.tl li.action::before { border-color: var(--accent); background: var(--accent); }
+.tl li.manual::before { border-color: var(--warn); }
+.tl li.incoming::before { border-color: var(--bad); }
+.tl li.rule::before { border-color: var(--ok); }
+.tl .when { font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.tl .details { margin: 4px 0 0; padding-left: 16px; font-size: 13px; }
+.tl .details li { border: 0; padding: 1px 0; margin: 0; }
+.tl .details li::before { display: none; }
+.tl .thesis { margin: 5px 0 0; font-size: 13px; }
+.tl .thesis summary { cursor: pointer; color: var(--accent); font-size: 12px; list-style-position: outside; }
+.tl .thesis summary::marker { color: var(--muted); }
+.tl .thesis .brief { margin: 2px 0 6px; padding: 8px 10px; background: var(--chip); border-radius: 8px; }
+.tl .thesis .brief > :first-child { margin-top: 0; }
+.tl .thesis .brief > :last-child { margin-bottom: 0; }
+
+/* pending */
+.txn { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.txn:last-child { border-bottom: 0; }
+.txn .items { margin: 4px 0 0; padding-left: 16px; font-size: 13px; }
+.grp { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted);
+  margin: 14px 0 0; display: flex; gap: 8px; align-items: center; }
+.grp:first-child { margin-top: 0; }
+.grp.act { color: var(--warn); }
+.txn .why { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+
+/* brief */
+.brief { max-width: 860px; overflow-wrap: anywhere; }
+.brief h1, .brief h2, .brief h3, .brief h4 { margin: 1.1em 0 0.4em; line-height: 1.25; }
+.brief h1 { font-size: 20px; margin-top: 0; } .brief h2 { font-size: 16px; } .brief h3 { font-size: 14px; }
+.brief p { margin: 0.5em 0; }
+.brief ul, .brief ol { margin: 0.4em 0; padding-left: 22px; }
+.brief code { font-family: var(--mono); font-size: 12px; background: var(--chip); padding: 0 4px; border-radius: 4px; }
+.brief pre { background: var(--chip); padding: 10px; border-radius: 8px; overflow-x: auto; }
+.brief pre code { background: none; padding: 0; }
+.brief table { margin: 0.6em 0; }
+select { font: inherit; font-size: 12px; background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 6px; padding: 2px 6px; max-width: 100%; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="team">Fantasy Manager</h1>
+  <span class="meta" id="teammeta"></span>
+  <span class="meta" id="refreshed"></span>
+  <span class="filters" id="names" style="margin-left:auto" aria-label="Name display"></span>
+</header>
+<main>
+  <section class="full" id="health-sec"><h2>Health <span id="log-age" class="muted"></span></h2><div id="health">Loading…</div></section>
+  <section id="timeline-sec">
+    <h2>Action timeline <span class="filters" id="filters"></span></h2>
+    <ul class="tl" id="timeline"></ul>
+  </section>
+  <div style="display:grid;gap:16px;align-content:start;min-width:0">
+    <section><h2>Pending ESPN transactions <span id="snap" class="muted"></span></h2><div id="pending"></div></section>
+    <section><h2>Roster <span id="rostermeta" class="muted"></span></h2><div class="scroll" id="roster"></div></section>
+  </div>
+  <section class="full"><h2>Brief <select id="briefpick" aria-label="Choose brief"></select></h2><article class="brief" id="brief"></article></section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtN = n => n == null ? "—" : Number(n).toLocaleString();
+const fmt1 = n => n == null ? "—" : Number(n).toFixed(1);
+const PT = { timeZone: "America/Los_Angeles" };
+
+function when(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleString("en-US", { ...PT, month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + " PT";
+}
+function ago(iso) {
+  if (!iso) return "";
+  const s = (Date.now() - new Date(iso)) / 1000;
+  if (s < 90) return "just now";
+  if (s < 5400) return Math.round(s / 60) + "m ago";
+  if (s < 172800) return Math.round(s / 3600) + "h ago";
+  return Math.round(s / 86400) + "d ago";
+}
+function dur(a, b) {
+  if (!a || !b) return "";
+  const s = Math.round((new Date(b) - new Date(a)) / 1000);
+  return s < 60 ? s + "s" : Math.floor(s / 60) + "m " + String(s % 60).padStart(2, "0") + "s";
+}
+
+/* ---------- names: real, or "Team N" so the screen can be recorded ---------- */
+let namesMode = "team";
+try { namesMode = localStorage.getItem("fantasy.names") === "real" ? "real" : "team"; } catch (e) {}
+let maskRules = [];
+const EXTRA_MASK_RULES = [];  // e.g. ["old team name", "Team 18"]
+function buildMask(teams) {
+  const rules = [];
+  for (const t of teams || []) {
+    const n = (t.name || "").trim();
+    if (n.length >= 3) rules.push([n, "Team " + t.id]);
+    for (const o of t.owners || []) {
+      // Full names only — a lone surname can be an NFL player (Murray, Smith).
+      if ((o || "").trim().split(/\s+/).length >= 2) rules.push([o.trim(), `Team ${t.id} owner`]);
+    }
+  }
+  // Add [oldName, replacement] pairs here for teams that have since renamed —
+  // buildMask only sees current names, but old briefs still contain the old ones.
+  for (const [from, to] of EXTRA_MASK_RULES) rules.push([from, to]);
+  maskRules = rules.sort((a, b) => b[0].length - a[0].length).map(([from, to]) => [
+    new RegExp(from.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/['\u2019]/g, "['\u2019]").replace(/\s+/g, "\\s+"), "gi"), to]);
+}
+function mask(s) {
+  if (namesMode === "real" || s == null) return s;
+  let out = String(s);
+  for (const [re, to] of maskRules) out = out.replace(re, to);
+  return out;
+}
+function renderNames() {
+  $("names").innerHTML = [["real", "Real names"], ["team", "Team N"]]
+    .map(([k, l]) => `<button data-n="${k}" class="${namesMode === k ? "on" : ""}">${l}</button>`).join("");
+}
+$("names").addEventListener("click", ev => {
+  const n = ev.target.dataset && ev.target.dataset.n;
+  if (!n || n === namesMode) return;
+  namesMode = n;
+  try { localStorage.setItem("fantasy.names", n); } catch (e) {}
+  renderNames();
+  if (lastData) { renderHeader(lastData); renderTimeline(lastData.timeline); renderPending(lastData); }
+  renderBrief(lastBrief);
+});
+
+/* ---------- markdown (headings, lists incl. nesting, bold/italic/code, tables, fences, hr) ---------- */
+function inline(s) {
+  const codes = [];
+  s = esc(s).replace(/`([^`]+)`/g, (_, c) => { codes.push(c); return "\u0000" + (codes.length - 1) + "\u0000"; });
+  s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+       .replace(/(^|[\s(])\*([^*\s][^*]*?)\*(?=[\s).,;:!?]|$)/g, "$1<em>$2</em>")
+       .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" rel="noopener">$1</a>');
+  return s.replace(/\u0000(\d+)\u0000/g, (_, i) => "<code>" + codes[i] + "</code>");
+}
+function md(src) {
+  const lines = String(src || "").replace(/\r/g, "").split("\n");
+  let out = "", para = [], stack = [], table = null, fence = null;
+  const flushPara = () => { if (para.length) { out += "<p>" + inline(para.join(" ")) + "</p>"; para = []; } };
+  const closeLists = (depth = 0) => {
+    while (stack.length > depth) { const t = stack.pop(); out += (t.li ? "</li>" : "") + "</" + t.tag + ">"; }
+  };
+  const flushTable = () => {
+    if (!table) return;
+    const rows = table.filter(r => !/^\|?\s*:?-{2,}/.test(r)).map(r => r.replace(/^\||\|$/g, "").split("|").map(c => c.trim()));
+    out += '<div class="scroll"><table>' + rows.map((r, i) =>
+      "<tr>" + r.map(c => (i ? "<td>" : "<th>") + inline(c) + (i ? "</td>" : "</th>")).join("") + "</tr>").join("") + "</table></div>";
+    table = null;
+  };
+  const flushAll = () => { flushPara(); closeLists(); flushTable(); };
+  for (const line of lines) {
+    if (fence !== null) {
+      if (/^\s*```/.test(line)) { out += "<pre><code>" + esc(fence.join("\n")) + "</code></pre>"; fence = null; }
+      else fence.push(line);
+      continue;
+    }
+    if (/^\s*```/.test(line)) { flushAll(); fence = []; continue; }
+    if (/^\s*\|/.test(line)) { flushPara(); closeLists(); (table ||= []).push(line.trim()); continue; }
+    flushTable();
+    if (!line.trim()) { flushPara(); closeLists(); continue; }
+    let m;
+    if ((m = line.match(/^(#{1,6})\s+(.*)$/))) { flushAll(); const n = m[1].length; out += `<h${n}>${inline(m[2])}</h${n}>`; continue; }
+    if (/^\s*(-{3,}|\*{3,})\s*$/.test(line)) { flushAll(); out += "<hr>"; continue; }
+    if ((m = line.match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/))) {
+      flushPara();
+      const depth = Math.floor(m[1].replace(/\t/g, "  ").length / 2), tag = /\d/.test(m[2]) ? "ol" : "ul";
+      closeLists(depth + 1);
+      if (stack.length === depth + 1) {
+        const top = stack[depth];
+        if (top.tag !== tag) { closeLists(depth); }
+        else if (top.li) { out += "</li>"; top.li = false; }
+      }
+      while (stack.length < depth + 1) { out += "<" + tag + ">"; stack.push({ tag, li: false }); }
+      out += "<li>" + inline(m[3]); stack[stack.length - 1].li = true;
+      continue;
+    }
+    if (stack.length) { out += " " + inline(line.trim()); continue; }  // lazy continuation of a list item
+    para.push(line.trim());
+  }
+  if (fence !== null) out += "<pre><code>" + esc(fence.join("\n")) + "</code></pre>";
+  flushAll();
+  return out;
+}
+
+/* ---------- health ---------- */
+function renderHealth(h) {
+  const r = h.last_run, t = h.last_run_with_tokens;
+  $("log-age").textContent = h.log_mtime ? "launchd.log updated " + ago(h.log_mtime) : "launchd.log not found";
+  if (!r) { $("health").innerHTML = '<span class="muted">No runs found in launchd.log.</span>'; return; }
+  const exitCls = r.exit === 0 ? "ok" : (r.exit == null ? "warn" : "bad");
+  const exitText = r.exit != null ? "exit " + r.exit : (r.skipped ? "skipped" : (r.start ? "running / no end marker" : "—"));
+  const tk = r.tokens && r.tokens.total != null ? r.tokens : null;
+  const tokSrc = tk ? r : t;
+  const tok = tokSrc && tokSrc.tokens;
+  const models = tok ? tok.models.map(m => m.model + " (out " + fmtN(m.out) + ")").join(", ") : "";
+  let html = '<div class="health">';
+  html += kv("Last run", when(r.started), `${ago(r.end || r.started)}${r.end ? " · took " + dur(r.started, r.end) : ""}`);
+  html += kv("Exit code", `<span class="dot ${exitCls}"></span> ${esc(exitText)}`, r.auth_expired ? "auth expired" : "", true);
+  html += kv("Model", r.model || (t && t.model) || "—",
+    r.model ? models : (t ? "no token line on last run; from " + when(t.started) : "no tokens: line yet"));
+  html += kv("Auth source", r.auth_source || h.last_known_auth_source || "—",
+    r.auth_source ? (r.claude_version || "") : (h.last_known_auth_source ? "from an earlier preflight" : ""));
+  html += kv("Tokens", tok ? fmtN(tok.total) : "—",
+    tok ? `$${Number(tok.est_cost || 0).toFixed(2)} · ${tok.turns ?? "?"} turns · ${tok.searches} searches${tk ? "" : " · from " + when(t.started)}`
+        : (tk === null && r.tokens ? esc(r.tokens.raw) : ""));
+  html += "</div>";
+  if (r.exit !== 0 && r.note) html += `<div class="alert">${esc(r.note)}</div>`;
+  html += '<div class="strip" title="Recent runs, oldest → newest"><span class="muted" style="font-size:12px;margin-right:4px">last ' + h.recent.length + ' runs</span>' +
+    h.recent.map(x => {
+      const c = x.exit === 0 ? "ok" : (x.exit == null ? "warn" : "bad");
+      const tip = `${when(x.started)} — ${x.exit != null ? "exit " + x.exit : (x.skipped ? "skipped" : "no end")}` +
+        (x.tokens_total != null ? ` — ${fmtN(x.tokens_total)} tokens` : "") + (x.exit !== 0 && x.note ? ` — ${x.note}` : "");
+      return `<span class="dot ${c}" title="${esc(tip)}"></span>`;
+    }).join("") + "</div>";
+  $("health").innerHTML = html;
+}
+function kv(k, v, s, raw) {
+  return `<div class="kv"><div class="k">${esc(k)}</div><div class="v">${raw ? v : esc(v)}</div><div class="s">${esc(s || "")}</div></div>`;
+}
+
+/* ---------- timeline ---------- */
+const CATS = [["all", "All"], ["action", "Moves"], ["run", "Runs"], ["incoming", "Incoming"], ["note", "Notes & rules"]];
+let filter = "all", lastData = null;
+function thesis(e) {
+  if (!e.thesis) return "";
+  const fromLog = (e.thesis_source || "").startsWith("log.md");
+  return `<details class="thesis"><summary>Thesis${fromLog ? " (logged Δ only)" : ""}
+      <span class="muted">· ${esc(e.thesis_source)}</span></summary>
+    <div class="brief">${md(mask(e.thesis))}</div></details>`;
+}
+function renderTimeline(entries) {
+  $("filters").innerHTML = CATS.map(([k, l]) => `<button data-f="${k}" class="${filter === k ? "on" : ""}">${l}</button>`).join("");
+  const show = entries.filter(e => filter === "all" || e.category === filter ||
+    (filter === "action" && e.category === "manual") || (filter === "note" && e.category === "rule"));
+  $("timeline").innerHTML = show.length ? show.map(e => {
+    const statusCls = { EXECUTED: "ok", PENDING: "warn", CANCELED: "bad" }[e.status] || "";
+    return `<li class="${e.category}">
+      <div class="when"><span>${e.ts ? when(e.ts) : esc(e.raw_ts || "undated")}</span>
+        <span class="chip ${e.category === "action" ? "accent" : ""}">${esc(e.kind)}</span>
+        ${e.status ? `<span class="chip ${statusCls}">${esc(e.status)}</span>` : ""}
+        ${e.ids.slice(0, 2).map(i => `<span class="mono" title="${esc(i)}">${esc(i.slice(0, 8))}</span>`).join("")}</div>
+      <ul class="details">${e.details.map(d => `<li>${esc(mask(d))}</li>`).join("")}</ul>${thesis(e)}</li>`;
+  }).join("") : '<li class="muted">Nothing in this filter.</li>';
+}
+$("filters").addEventListener("click", ev => {
+  const f = ev.target.dataset && ev.target.dataset.f;
+  if (f && lastData) { filter = f; renderTimeline(lastData.timeline); }
+});
+
+/* ---------- pending ---------- */
+const REASON = { incoming: "incoming — you respond", force: "needs --force", expiring: "expires within 24h" };
+function left(ms) {
+  const s = Math.round((ms - Date.now()) / 1000);
+  if (s <= 0) return "";
+  const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+  return d ? `${d}d ${h}h` : h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m ${String(s % 60).padStart(2, "0")}s`;
+}
+function expiryChip(c) {
+  if (!c.expires_ms) return "";
+  const soon = (c.reasons || []).includes("expiring");
+  return `<span class="chip ${soon || c.expired ? "warn" : ""}" title="${esc(when(new Date(c.expires_ms).toISOString()))}">${
+    c.expired ? "expired" : "expires in " + left(c.expires_ms)}</span>`;
+}
+function reasonChips(c) {
+  const chips = (c.reasons || []).map(r => `<span class="chip warn">${esc(REASON[r] || r)}</span>`);
+  if (!c.needs_action && c.waiting_on) chips.push(`<span class="chip">waiting on ${esc(mask(c.waiting_on))}</span>`);
+  return chips.length ? `<div class="why">${chips.join("")}</div>` : "";
+}
+function renderPending(d) {
+  $("snap").textContent = d.pulled_at ? "state.json " + ago(d.pulled_at) : "";
+  const item = i => {
+    const verb = { ADD: "add", DROP: "drop", TRADE: "" }[i.type] ?? i.type;
+    const route = i.type === "TRADE" ? ` <span class="muted">${esc(mask(i.from_name || i.from))} → ${esc(mask(i.to_name || i.to))}</span>` : "";
+    return `<li>${verb ? `<span class="chip">${esc(verb)}</span> ` : ""}${esc(mask(i.player))}${route}</li>`;
+  };
+  const cards = (d.pending || []).map(t => ({ needs_action: t.needs_action, html: `<div class="txn">
+      <div><span class="chip ${t.type === "TRADE_PROPOSAL" ? "accent" : ""}">${esc(t.type)}</span>
+        <span class="chip ${t.needs_action ? "warn" : ""}">${esc(t.status)}</span>
+        <span class="mono" title="${esc(t.id)}">${esc((t.id || "").slice(0, 8))}</span> ${expiryChip(t)}
+        <span class="muted">${t.by_team === 4 ? "by me" : "by " + esc(mask(t.by_team_name || t.by_team))} · ${when(t.proposed)}</span></div>
+      <ul class="items">${t.items.map(item).join("")}</ul>${reasonChips(t)}</div>` }));
+  // Moves log.md records after the snapshot — same two buckets, tagged so it's clear ESPN hasn't confirmed them here.
+  for (const e of d.logged_after_snapshot || []) cards.push({ needs_action: e.needs_action, html: `<div class="txn">
+      <div><span class="chip accent">${esc(e.kind)}</span> <span class="chip ${e.needs_action ? "warn" : ""}">PENDING</span>
+        <span class="mono">${esc((e.ids[0] || "").slice(0, 8))}</span> ${expiryChip(e)}
+        <span class="muted">${when(e.ts)} · logged after snapshot</span></div>
+      <ul class="items">${e.details.slice(0, 2).map(x => `<li>${esc(mask(x))}</li>`).join("")}</ul>${reasonChips(e)}</div>` });
+  const group = (cls, label, list, empty) => `<p class="grp ${cls}">${label} (${list.length})</p>` +
+    (list.length ? list.map(c => c.html).join("") : `<p class="muted">${empty}</p>`);
+  let html = cards.length
+    ? group("act", "Needs my action", cards.filter(c => c.needs_action), "Nothing needs you right now.") +
+      group("", "Waiting on ESPN / other managers", cards.filter(c => !c.needs_action), "Nothing outstanding.")
+    : '<p class="muted">No pending transactions in state.json.</p>';
+  if (d.state_error) html = `<div class="alert">${esc(d.state_error)}</div>` + html;
+  $("pending").innerHTML = html;
+}
+
+/* ---------- roster ---------- */
+const SLOT_ORDER = { QB: 0, RB: 1, WR: 2, TE: 3, "RB/WR/TE": 4, FLEX: 4, "D/ST": 6, K: 5, BE: 8, IR: 9 };
+function injuryChip(s) {
+  if (!s || s === "ACTIVE" || s === "NORMAL") return "";
+  const c = /QUESTION|DAY_TO_DAY/.test(s) ? "warn" : "bad";
+  return `<span class="chip ${c}">${esc(s.replace(/_/g, " "))}</span>`;
+}
+function renderRoster(d) {
+  const m = d.my_team;
+  if (!m || !m.roster) { $("roster").innerHTML = '<p class="muted">No roster in state.json.</p>'; return; }
+  const ros = p => (p.proj_season ?? 0) - (p.pts_season ?? 0);
+  const roster = [...m.roster].sort((a, b) => ((SLOT_ORDER[a.slot] ?? 7) - (SLOT_ORDER[b.slot] ?? 7)) || ros(b) - ros(a));
+  const count = pos => m.roster.filter(p => p.pos === pos).length;
+  $("rostermeta").textContent = `${count("RB")} RB · ${count("WR")} WR · ${m.roster.length} players`;
+  let prevBench = false;
+  const body = roster.map((p, i) => {
+    const bench = p.slot === "BE" || p.slot === "IR";
+    const next = roster[i + 1];
+    const divider = !bench && next && (next.slot === "BE" || next.slot === "IR");
+    prevBench = bench;
+    return `<tr class="${bench ? "bench" : ""} ${divider ? "divider" : ""}">
+      <td class="mono">${esc(p.slot === "RB/WR/TE" ? "FLEX" : p.slot)}</td>
+      <td><strong>${esc(p.name)}</strong> <span class="muted">${esc(p.pos)} · ${esc(p.nfl_team)}</span> ${injuryChip(p.injury)}</td>
+      <td class="num">${fmt1(p.proj_season)}</td><td class="num">${fmt1(p.pts_season)}</td><td class="num"><strong>${fmt1(ros(p))}</strong></td></tr>`;
+  }).join("");
+  $("roster").innerHTML = `<table><thead><tr><th>Slot</th><th>Player</th><th class="num">Season proj</th><th class="num">Pts</th><th class="num">ROS</th></tr></thead><tbody>${body}</tbody></table>`;
+}
+
+/* ---------- brief ---------- */
+let briefName = null, lastBrief = null;
+function renderBriefPicker(names, current) {
+  const sel = $("briefpick");
+  sel.innerHTML = names.map(n => `<option ${n === current ? "selected" : ""}>${esc(n)}</option>`).join("");
+}
+function renderBrief(b) {
+  lastBrief = b;  // kept so the names toggle can re-render without refetching
+  $("brief").innerHTML = b ? md(mask(b.text)) : '<p class="muted">No briefs in briefs/.</p>';
+}
+$("briefpick").addEventListener("change", async ev => {
+  briefName = ev.target.value;
+  const r = await fetch("/api/brief?name=" + encodeURIComponent(briefName));
+  renderBrief(await r.json());
+});
+
+/* ---------- header + load ---------- */
+function renderHeader(d) {
+  const m = d.my_team || {}, mu = d.matchup, lg = d.league || {}, tc = d.trade_count;
+  $("team").textContent = mask((m.name || "Fantasy Manager").trim());
+  const bits = [];
+  if (m.record) bits.push(esc(m.record));
+  if (tc && tc.used != null) bits.push(`<span class="chip ${tc.cap != null && tc.used >= tc.cap ? "warn" : ""}"
+    title="from ${esc(tc.source)}">Week ${esc(tc.week)} trades: ${esc(tc.used)}/${esc(tc.cap ?? 3)} used</span>`);
+  if (m.points_for != null) bits.push(esc(fmt1(m.points_for) + " PF"));
+  if (lg.week && !(tc && tc.week === lg.week)) bits.push("Week " + esc(lg.week));
+  if (mu) bits.push(esc(mask(`${mu.away} ${fmt1(mu.away_proj)} @ ${mu.home} ${fmt1(mu.home_proj)} proj`.replace(/\s+/g, " "))));
+  $("teammeta").innerHTML = bits.join(" · ");
+  $("refreshed").textContent = "refreshed " + when(d.generated_at);
+}
+async function load() {
+  try {
+    const r = await fetch("/api/data", { cache: "no-store" });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    lastData = d;
+    buildMask(d.teams);
+    renderHeader(d); renderHealth(d.health); renderTimeline(d.timeline); renderPending(d); renderRoster(d);
+    const latest = d.brief && d.brief.name;
+    if (!briefName || briefName === latest || !d.briefs.includes(briefName)) {
+      briefName = latest; renderBrief(d.brief);
+    }
+    renderBriefPicker(d.briefs, briefName);
+  } catch (e) {
+    $("health").innerHTML = `<div class="alert">Dashboard server error: ${esc(e.message)}</div>`;
+  }
+}
+renderNames();
+load();
+setInterval(load, 60000);
+// Cheap re-render so the "expires in …" countdowns tick between fetches.
+setInterval(() => { if (lastData) renderPending(lastData); }, 30000);
+</script>
+</body>
+</html>

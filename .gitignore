@@ -1,0 +1,18 @@
+# secrets
+.env
+
+# generated state and logs
+state.json
+log.md
+launchd.log
+*.log
+BRIEF.md
+briefs/*.md
+!briefs/.gitkeep
+
+# python
+__pycache__/
+*.py[cod]
+
+# macOS
+.DS_Store
