@@ -3,7 +3,7 @@
 **An AI that runs my ESPN fantasy football team completely on its own.**
 It sets my lineup, claims players off waivers, and proposes, accepts, and declines trades — every day, on a schedule, on a Mac mini in my room. I don't touch it.
 
-![Dashboard](docs/dashboard.png)
+![Dashboard](screenshot.png
 
 ▶ **Watch me build it:** [link coming]
 
