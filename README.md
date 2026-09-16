@@ -43,4 +43,60 @@ It runs itself. A human only steps in for the moves the rulebook deliberately ho
 
 You'll need: an ESPN fantasy account, Python 3, and (for scheduled runs) Claude Code.
 
-1. **Clone and enter:**
+**1. Clone and install:**
+
+```bash
+git clone https://github.com/kieran-venieris/fantasy-bot.git
+cd fantasy-bot
+pip3 install espn_api --break-system-packages
+```
+
+**2. Copy the env template and fill it in:**
+
+```bash
+cp .env.example .env
+```
+
+You'll need your `ESPN_S2` and `SWID` cookies (from your browser while logged into ESPN), plus your `LEAGUE_ID` and `TEAM_ID` (from your league and team URLs). For scheduled runs, add a `CLAUDE_CODE_OAUTH_TOKEN` — generate one with `claude setup-token`.
+
+**3. Pull the current league state:**
+
+```bash
+set -a; source .env; set +a
+python3 league_state.py > state.json
+```
+
+**4. Test a transaction in dry-run** (nothing is sent to ESPN without `--live`):
+
+```bash
+python3 transact.py add --add "Player Name" --drop "Bench Player"
+```
+
+**5. Run the dashboard** (optional):
+
+```bash
+python3 dashboard/server.py
+```
+
+Then open `http://localhost:8787`.
+
+Scheduling the full autonomous run is done through `run.sh` plus a `launchd` job — see `implementation-notes.md` for the exact setup.
+
+## Permissions
+
+| Level | What the bot may do |
+|-------|--------------------|
+| **Auto** | Read the league, set the optimal lineup, submit waiver claims, draft moves. |
+| **Ask** | Send a trade offer, accept an incoming trade, drop a starter — surfaced to me first. |
+| **Never** | Anything outside a defined module, delete anything, handle credentials. |
+
+## Limitations & disclaimer
+
+- **Not affiliated with ESPN.** This uses ESPN's private, undocumented endpoints, which can change or break without notice.
+- **Use at your own risk.** It makes real transactions on your real team. Test in dry-run first, and always read what it's doing.
+- **Projections drive decisions.** The bot is only as good as ESPN's projections and the rules in `CLAUDE.md`.
+- Built as a learning project — not a product, and not financial or fantasy advice.
+
+## License
+
+MIT © Kieran
